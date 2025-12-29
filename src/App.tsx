@@ -10,7 +10,6 @@ import { pickAiMove } from "./lib/goAi";
 import { clearGoState, loadGoState, saveGoState } from "./lib/storage";
 import { clearApiKey, loadApiKey, saveApiKey } from "./lib/apiKeyStorage";
 import { getGoFeedback } from "./lib/openaiClient";
-import { isKataGoConfigured, requestKataGoMove } from "./lib/katagoClient";
 import type { GoCoachResponse, StoneColor } from "./types/go";
 import type { GoMove } from "./types/go";
 import "./App.css";
@@ -28,10 +27,8 @@ export default function App() {
   const [coachLoading, setCoachLoading] = useState(false);
   const [coachError, setCoachError] = useState<string | null>(null);
   const [isAiThinking, setIsAiThinking] = useState(false);
-  const [engineDetails, setEngineDetails] = useState<string | null>(null);
 
   const aiColor: StoneColor = humanColor === "black" ? "white" : "black";
-  const engineMode = useMemo(() => (isKataGoConfigured() ? "katago" : "heuristic"), []);
 
   const syncState = useCallback(() => {
     const nextBoard = gameRef.current.getBoard();
@@ -142,80 +139,21 @@ export default function App() {
     requestCoach();
   }, [apiKey, requestCoach]);
 
-  const applyEngineCoordinate = useCallback(
-    (coordinate: string) => {
-      if (coordinate.toLowerCase() === "pass") {
-        gameRef.current.pass(aiColor);
-        return "pass" as const;
-      }
-      const point = GoGame.coordinateToIndices(coordinate, boardSize);
-      if (!point) {
-        return null;
-      }
-      const [x, y] = point;
-      const result = gameRef.current.playMove(x, y, aiColor);
-      return result.success ? "played" : null;
-    },
-    [aiColor, boardSize],
-  );
-
-  const triggerAiMove = useCallback(async () => {
+  const triggerAiMove = useCallback(() => {
     setIsAiThinking(true);
-    try {
-      if (engineMode === "katago") {
-        const history = gameRef.current.getMoveHistory().map((move) => move.coordinate);
-        const { bestMove } = await requestKataGoMove({
-          boardSize,
-          moves: history,
-          nextPlayer: aiColor,
-        });
-        const normalized = bestMove.move.toUpperCase();
-        const applied = applyEngineCoordinate(normalized);
-        if (!applied) {
-          throw new Error(`Engine suggested illegal move: ${normalized}`);
-        }
-        setStatus(applied === "pass" ? "Computer passed. Your turn." : "Your turn.");
-        setEngineDetails(() => {
-          const parts = [`${normalized}`];
-          if (typeof bestMove.winrate === "number") {
-            parts.push(`winrate ${(bestMove.winrate * 100).toFixed(1)}%`);
-          }
-          if (typeof bestMove.scoreLead === "number") {
-            parts.push(`score lead ${bestMove.scoreLead.toFixed(1)}`);
-          }
-          return `KataGo: ${parts.join(" · ")}`;
-        });
+    setTimeout(() => {
+      const move = pickAiMove(gameRef.current, aiColor);
+      if (move) {
+        gameRef.current.playMove(move.x, move.y, aiColor);
+        setStatus("Your turn.");
       } else {
-        await new Promise((resolve) => setTimeout(resolve, 350));
-        const move = pickAiMove(gameRef.current, aiColor);
-        if (move) {
-          gameRef.current.playMove(move.x, move.y, aiColor);
-          setStatus("Your turn.");
-        } else {
-          gameRef.current.pass(aiColor);
-          setStatus("Computer passed. Your turn.");
-        }
-        setEngineDetails(null);
+        gameRef.current.pass(aiColor);
+        setStatus("Computer passed. Your turn.");
       }
-    } catch (error) {
-      console.error("AI move failed", error);
-      if (engineMode === "katago") {
-        setStatus("Engine unavailable. Falling back to simple bot.");
-        const move = pickAiMove(gameRef.current, aiColor);
-        if (move) {
-          gameRef.current.playMove(move.x, move.y, aiColor);
-        } else {
-          gameRef.current.pass(aiColor);
-        }
-        setEngineDetails(null);
-      } else {
-        setStatus("Engine error.");
-      }
-    } finally {
       setIsAiThinking(false);
       syncState();
-    }
-  }, [aiColor, applyEngineCoordinate, boardSize, engineMode, syncState]);
+    }, 400);
+  }, [aiColor, syncState]);
 
   const handlePlay = useCallback(
     (x: number, y: number) => {
@@ -311,8 +249,6 @@ export default function App() {
             lastMove={lastMove}
           />
           <p className="status-text">{status}</p>
-          <p className="muted small">Engine: {engineMode === "katago" ? "KataGo (remote server)" : "basic heuristic"}</p>
-          {engineDetails && <p className="muted small">{engineDetails}</p>}
           <MoveList moves={moves} />
         </div>
         <div className="analytics-column">

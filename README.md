@@ -8,7 +8,7 @@ A lightweight Go training sandbox inspired by Chess Coach. Play 9×9 (or larger)
 - Tap-to-play Go board with last-move highlighting and a scrolling move list.
 - Pass/new game/swap sides controls plus a basic heuristic opponent built on top of the same rules engine.
 - Optional OpenAI integration: save your API key locally to get JSON feedback tailored to the current board/move history.
-- Stronger local bot: a Monte Carlo simulation engine runs entirely in-browser, so no servers or API calls are needed.
+- Stronger local bot: a Monte Carlo simulation engine runs entirely in-browser and automatically scores when both players pass.
 - GitHub Pages workflow identical to Chess Coach for fast deployments.
 
 ## Local development

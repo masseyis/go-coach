@@ -9,11 +9,12 @@ type Props = {
   onPass: () => void;
   onSwapSides: () => void;
   humanColor: StoneColor;
+  disablePass?: boolean;
 };
 
 const SIZE_OPTIONS = [9, 13, 19];
 
-export function Controls({ boardSize, onBoardSizeChange, onNewGame, onPass, onSwapSides, humanColor }: Props) {
+export function Controls({ boardSize, onBoardSizeChange, onNewGame, onPass, onSwapSides, humanColor, disablePass }: Props) {
   const handleSizeChange = (event: ChangeEvent<HTMLSelectElement>) => {
     onBoardSizeChange(Number(event.target.value));
   };
@@ -33,7 +34,7 @@ export function Controls({ boardSize, onBoardSizeChange, onNewGame, onPass, onSw
       <button className="primary-btn" onClick={onNewGame}>
         New game
       </button>
-      <button className="secondary-btn" onClick={onPass}>
+      <button className="secondary-btn" onClick={onPass} disabled={disablePass}>
         Pass
       </button>
       <button className="secondary-btn" onClick={onSwapSides}>

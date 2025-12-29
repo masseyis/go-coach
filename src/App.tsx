@@ -27,6 +27,8 @@ export default function App() {
   const [coachLoading, setCoachLoading] = useState(false);
   const [coachError, setCoachError] = useState<string | null>(null);
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const [, setPassesInRow] = useState(0);
+  const [gameResult, setGameResult] = useState<string | null>(null);
 
   const aiColor: StoneColor = humanColor === "black" ? "white" : "black";
 
@@ -52,6 +54,8 @@ export default function App() {
       setStatus("Place a stone to begin.");
       clearGoState();
       setCoachFeedback(null);
+      setPassesInRow(0);
+      setGameResult(null);
     },
     [],
   );
@@ -91,6 +95,8 @@ export default function App() {
       setBoard(restored.getBoard());
       setMoves(restored.getMoveHistory());
       setStatus("Game restored. Your move.");
+      setPassesInRow(0);
+      setGameResult(null);
     }
   }, []);
 
@@ -139,6 +145,35 @@ export default function App() {
     requestCoach();
   }, [apiKey, requestCoach]);
 
+  const concludeGame = useCallback(() => {
+    const territory = gameRef.current.getTerritoryEstimate();
+    const diff = territory.black - territory.white;
+    let summary: string;
+    if (Math.abs(diff) < 0.5) {
+      summary = `Game over. Tie at ${territory.black}-${territory.white} (captures included).`;
+    } else if (diff > 0) {
+      summary = `Game over. Black leads by ${diff} (approx).`;
+    } else {
+      summary = `Game over. White leads by ${Math.abs(diff)} (approx).`;
+    }
+    setStatus(summary + " Start a new game to keep practicing.");
+    setGameResult(summary);
+  }, []);
+
+  const registerPass = useCallback(() => {
+    setPassesInRow((prev) => {
+      const next = prev + 1;
+      if (next >= 2) {
+        concludeGame();
+      }
+      return next;
+    });
+  }, [concludeGame]);
+
+  const registerMove = useCallback(() => {
+    setPassesInRow(0);
+  }, []);
+
   const triggerAiMove = useCallback(() => {
     setIsAiThinking(true);
     setTimeout(() => {
@@ -146,17 +181,23 @@ export default function App() {
       if (move) {
         gameRef.current.playMove(move.x, move.y, aiColor);
         setStatus("Your turn.");
+        registerMove();
       } else {
         gameRef.current.pass(aiColor);
         setStatus("Computer passed. Your turn.");
+        registerPass();
       }
       setIsAiThinking(false);
       syncState();
     }, 400);
-  }, [aiColor, syncState]);
+  }, [aiColor, registerMove, registerPass, syncState]);
 
   const handlePlay = useCallback(
     (x: number, y: number) => {
+      if (gameResult) {
+        setStatus("Game over. Start a new game.");
+        return;
+      }
       if (isAiThinking) return;
       if (gameRef.current.getTurn() !== humanColor) {
         setStatus("Wait for your turn.");
@@ -167,21 +208,27 @@ export default function App() {
         setStatus("Illegal move. Try another intersection.");
         return;
       }
+      registerMove();
       setStatus("Computer thinking...");
       syncState();
       maybeAutoCoach();
       triggerAiMove();
     },
-    [humanColor, isAiThinking, maybeAutoCoach, syncState, triggerAiMove],
+    [humanColor, isAiThinking, maybeAutoCoach, registerMove, syncState, triggerAiMove],
   );
 
   const handlePass = useCallback(() => {
+    if (gameResult) {
+      setStatus("Game over. Start a new game.");
+      return;
+    }
     if (gameRef.current.pass(humanColor)) {
       setStatus("You passed. Computer to move.");
+      registerPass();
       syncState();
       triggerAiMove();
     }
-  }, [humanColor, syncState, triggerAiMove]);
+  }, [humanColor, registerPass, syncState, triggerAiMove]);
 
   const handleBoardSizeChange = useCallback(
     (size: number) => {
@@ -233,6 +280,7 @@ export default function App() {
           onPass={handlePass}
           onSwapSides={handleSwapSides}
           humanColor={humanColor}
+          disablePass={Boolean(gameResult) || isAiThinking}
         />
       </header>
 

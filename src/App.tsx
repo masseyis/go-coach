@@ -146,11 +146,11 @@ export default function App() {
   }, [apiKey, requestCoach]);
 
   const concludeGame = useCallback(() => {
-    const territory = gameRef.current.getTerritoryEstimate();
-    const diff = territory.black - territory.white;
+    const score = gameRef.current.getScoreEstimate();
+    const diff = score.black.total - score.white.total;
     let summary: string;
     if (Math.abs(diff) < 0.5) {
-      summary = `Game over. Tie at ${territory.black}-${territory.white} (captures included).`;
+      summary = `Game over. Tie at ${score.black.total}-${score.white.total} (captures included).`;
     } else if (diff > 0) {
       summary = `Game over. Black leads by ${diff} (approx).`;
     } else {
@@ -177,6 +177,10 @@ export default function App() {
   const triggerAiMove = useCallback(() => {
     setIsAiThinking(true);
     setTimeout(() => {
+      if (gameResult) {
+        setIsAiThinking(false);
+        return;
+      }
       const move = pickAiMove(gameRef.current, aiColor);
       if (move) {
         gameRef.current.playMove(move.x, move.y, aiColor);
@@ -190,7 +194,7 @@ export default function App() {
       setIsAiThinking(false);
       syncState();
     }, 400);
-  }, [aiColor, registerMove, registerPass, syncState]);
+  }, [aiColor, gameResult, registerMove, registerPass, syncState]);
 
   const handlePlay = useCallback(
     (x: number, y: number) => {
@@ -265,6 +269,7 @@ export default function App() {
   }, []);
 
   const lastMove = useMemo(() => moves[moves.length - 1]?.coordinate, [moves]);
+  const scoreEstimate = useMemo(() => gameRef.current.getScoreEstimate(), [board]);
 
   return (
     <div className="app-shell">
@@ -290,13 +295,33 @@ export default function App() {
         <div className="play-column">
           <GoBoard
             board={board}
-            allowMoves={!isAiThinking && gameRef.current.getTurn() === humanColor}
+            allowMoves={!isAiThinking && !gameResult && gameRef.current.getTurn() === humanColor}
             onPlay={handlePlay}
             size={boardSize}
             turn={gameRef.current.getTurn()}
             lastMove={lastMove}
           />
           <p className="status-text">{status}</p>
+          {gameResult && <p className="muted">{gameResult}</p>}
+          <div className="score-panel">
+            <h3>Live score (stones + territory + captures)</h3>
+            <div className="score-breakdown">
+              <div>
+                <span className="score-label">Black</span>
+                <span className="score-total">{scoreEstimate.black.total}</span>
+                <span className="muted small">
+                  stones {scoreEstimate.black.stones} · territory {scoreEstimate.black.territory} · captures {scoreEstimate.black.captures}
+                </span>
+              </div>
+              <div>
+                <span className="score-label">White</span>
+                <span className="score-total">{scoreEstimate.white.total}</span>
+                <span className="muted small">
+                  stones {scoreEstimate.white.stones} · territory {scoreEstimate.white.territory} · captures {scoreEstimate.white.captures}
+                </span>
+              </div>
+            </div>
+          </div>
           <MoveList moves={moves} />
         </div>
         <div className="analytics-column">

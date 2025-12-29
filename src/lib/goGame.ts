@@ -73,19 +73,37 @@ export class GoGame {
     return [x, y];
   }
 
-  getTerritoryEstimate() {
-    const counts = { black: 0, white: 0 };
+  getScoreEstimate() {
+    const territory = this.countTerritory();
+    const stones = { black: 0, white: 0 };
     for (let y = 0; y < this.size; y += 1) {
       for (let x = 0; x < this.size; x += 1) {
         const cell = this.board[y][x];
         if (cell) {
-          counts[cell] += 1;
+          stones[cell] += 1;
         }
       }
     }
-    counts.black += this.captures.black;
-    counts.white += this.captures.white;
-    return counts;
+
+    const assemble = (color: StoneColor) => ({
+      stones: stones[color],
+      territory: territory[color],
+      captures: this.captures[color],
+      total: stones[color] + territory[color] + this.captures[color],
+    });
+
+    return {
+      black: assemble("black"),
+      white: assemble("white"),
+    };
+  }
+
+  getTerritoryEstimate() {
+    const score = this.getScoreEstimate();
+    return {
+      black: score.black.total,
+      white: score.white.total,
+    };
   }
 
   pass(color: StoneColor) {
@@ -243,5 +261,43 @@ export class GoGame {
       boardSnapshot: move.boardSnapshot.map((row) => [...row]),
     }));
     return copy;
+  }
+
+  private countTerritory() {
+    const visited: boolean[][] = Array.from({ length: this.size }, () => Array<boolean>(this.size).fill(false));
+    const result = { black: 0, white: 0 };
+
+    for (let y = 0; y < this.size; y += 1) {
+      for (let x = 0; x < this.size; x += 1) {
+        if (this.board[y][x] || visited[y][x]) continue;
+        const queue: Array<[number, number]> = [[x, y]];
+        visited[y][x] = true;
+        const bordering = new Set<StoneColor>();
+        let area = 0;
+
+        while (queue.length) {
+          const [cx, cy] = queue.pop()!;
+          area += 1;
+          this.getNeighbors(cx, cy).forEach(([nx, ny]) => {
+            const cell = this.board[ny][nx];
+            if (cell) {
+              bordering.add(cell);
+            } else if (!visited[ny][nx]) {
+              visited[ny][nx] = true;
+              queue.push([nx, ny]);
+            }
+          });
+        }
+
+        if (bordering.size === 1) {
+          const [owner] = Array.from(bordering);
+          if (owner) {
+            result[owner] += area;
+          }
+        }
+      }
+    }
+
+    return result;
   }
 }

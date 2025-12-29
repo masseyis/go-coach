@@ -213,6 +213,34 @@ button {
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.35);
 }
 
+.score-panel {
+  background: var(--panel);
+  border-radius: 16px;
+  padding: 0.9rem 1rem;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.35);
+}
+
+.score-panel h3 {
+  margin: 0 0 0.4rem 0;
+  font-size: 1rem;
+}
+
+.score-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.score-label {
+  font-weight: 600;
+  margin-right: 0.4rem;
+}
+
+.score-total {
+  font-weight: 700;
+  margin-right: 0.4rem;
+}
+
 .panel-label {
   text-transform: uppercase;
   letter-spacing: 0.1em;

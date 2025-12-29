@@ -49,8 +49,9 @@ export function pickAiMove(
   const legalMoves = listLegalMoves(game, color);
   if (legalMoves.length === 0) return null;
 
-  const playouts = options.playouts ?? (game.getBoardSize() <= 9 ? 60 : 30);
-  const playoutDepth = options.playoutDepth ?? (game.getBoardSize() <= 9 ? 40 : 60);
+  const size = game.getBoardSize();
+  const playouts = options.playouts ?? (size <= 9 ? 20 : size <= 13 ? 15 : 10);
+  const playoutDepth = options.playoutDepth ?? (size <= 9 ? 20 : size <= 13 ? 30 : 40);
 
   type Candidate = { x: number; y: number; score: number };
   let bestMove: Candidate | undefined;

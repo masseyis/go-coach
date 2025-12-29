@@ -10,7 +10,7 @@ function boardKey(board: Intersection[][]) {
     .join("/");
 }
 
-const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const LETTERS = "ABCDEFGHJKLMNOPQRST";
 
 export class GoGame {
   size: number;
@@ -57,6 +57,20 @@ export class GoGame {
 
   coordinateFromIndices(x: number, y: number) {
     return `${LETTERS[x]}${this.size - y}`;
+  }
+
+  static coordinateToIndices(coordinate: string, size: number): [number, number] | null {
+    if (!coordinate) return null;
+    if (coordinate.toLowerCase() === "pass") return null;
+    const letter = coordinate[0]?.toUpperCase();
+    const numberPortion = coordinate.slice(1);
+    const x = LETTERS.indexOf(letter);
+    const numeric = Number.parseInt(numberPortion, 10);
+    if (x < 0 || x >= size) return null;
+    if (Number.isNaN(numeric) || numeric < 1 || numeric > size) return null;
+    const y = size - numeric;
+    if (y < 0 || y >= size) return null;
+    return [x, y];
   }
 
   getTerritoryEstimate() {
